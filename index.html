@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <!-- Responsive : indispensable pour l'ouverture sur mobile via QR code -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1d4ed8">
+  <title>Pressing – Commander une collecte</title>
+
+  <style>
+    /* =========================================================
+       1. VARIABLES (palette bleus / blancs)
+       ========================================================= */
+    :root {
+      --bleu-900: #0b2a6b;
+      --bleu-700: #1d4ed8;
+      --bleu-600: #2563eb;
+      --bleu-100: #dbeafe;
+      --bleu-50:  #eff6ff;
+      --blanc:    #ffffff;
+      --fond:     #f4f8ff;
+      --texte:    #0f1e3d;
+      --texte-2:  #52607d;
+      --bordure:  #d3def2;
+      --erreur:   #c0392b;
+      --succes:   #15803d;
+      --rayon:    14px;
+      --ombre:    0 1px 2px rgba(11, 42, 107, .06), 0 8px 24px rgba(11, 42, 107, .07);
+    }
+
+    /* =========================================================
+       2. BASE
+       ========================================================= */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--texte);
+      background: var(--fond);
+      line-height: 1.5;
+      padding-bottom: 110px;           /* espace pour la barre de validation fixe */
+    }
+    h1, h2, h3 { margin: 0; line-height: 1.2; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    :focus-visible { outline: 3px solid var(--bleu-600); outline-offset: 2px; }
+
+    .conteneur { width: 100%; max-width: 720px; margin: 0 auto; padding: 0 16px; }
+
+    /* =========================================================
+       3. EN-TÊTE
+       ========================================================= */
+    .entete {
+      background: linear-gradient(160deg, var(--bleu-900), var(--bleu-700));
+      color: var(--blanc);
+      padding: 28px 0 56px;
+    }
+    .entete h1 { font-size: clamp(1.6rem, 5vw, 2.2rem); letter-spacing: -.02em; }
+    .entete p  { margin: 8px 0 0; color: #cfe0ff; max-width: 46ch; }
+
+    /* =========================================================
+       4. ONGLETS
+       ========================================================= */
+    .onglets {
+      display: flex; gap: 4px;
+      background: var(--blanc);
+      border: 1px solid var(--bordure);
+      border-radius: 999px;
+      padding: 4px;
+      margin: -26px auto 20px;
+      box-shadow: var(--ombre);
+    }
+    .onglet {
+      flex: 1;
+      border: 0; background: transparent; cursor: pointer;
+      padding: 10px 14px; border-radius: 999px;
+      font-weight: 600; color: var(--texte-2);
+    }
+    .onglet[aria-selected="true"] { background: var(--bleu-700); color: var(--blanc); }
+    .pastille {
+      display: inline-block; min-width: 22px; padding: 0 6px; margin-left: 6px;
+      border-radius: 999px; background: var(--bleu-100); color: var(--bleu-900);
+      font-size: .8rem; font-weight: 700;
+    }
+    .onglet[aria-selected="true"] .pastille { background: rgba(255,255,255,.25); color: var(--blanc); }
+
+    /* =========================================================
+       5. SECTIONS DU FORMULAIRE
+       ========================================================= */
+    .bloc {
+      background: var(--blanc);
+      border: 1px solid var(--bordure);
+      border-radius: var(--rayon);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--ombre);
+    }
+    .bloc > h2 { font-size: 1.1rem; margin-bottom: 4px; }
+    .aide { margin: 0 0 14px; color: var(--texte-2); font-size: .92rem; }
+
+    .grille { display: grid; gap: 14px; }
+    @media (min-width: 560px) { .grille.deux { grid-template-columns: 1fr 1fr; } }
+
+    label.champ { display: block; font-weight: 600; font-size: .92rem; }
+    .champ input, .champ select, .champ textarea {
+      display: block; width: 100%; margin-top: 6px;
+      padding: 12px 14px;
+      border: 1.5px solid var(--bordure); border-radius: 10px;
+      background: var(--blanc);
+      font-weight: 400;
+    }
+    .champ input:focus, .champ select:focus, .champ textarea:focus {
+      border-color: var(--bleu-600); outline: 3px solid var(--bleu-100);
+    }
+    .champ.invalide input, .champ.invalide select, .champ.invalide textarea { border-color: var(--erreur); }
+    .message-erreur { display: none; margin-top: 6px; color: var(--erreur); font-size: .85rem; font-weight: 500; }
+    .champ.invalide .message-erreur { display: block; }
+
+    /* =========================================================
+       6. SÉLECTEURS VISUELS DE VÊTEMENTS
+       ========================================================= */
+    .vetements { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    @media (min-width: 560px) { .vetements { grid-template-columns: repeat(3, 1fr); } }
+
+    .vetement {
+      border: 1.5px solid var(--bordure); border-radius: 12px;
+      padding: 12px 10px; text-align: center; background: var(--blanc);
+      transition: border-color .15s, background .15s;
+    }
+    .vetement.actif { border-color: var(--bleu-600); background: var(--bleu-50); }
+    .vetement svg { width: 34px; height: 34px; stroke: var(--bleu-700); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .vetement .nom { display: block; font-weight: 600; font-size: .92rem; margin: 4px 0 8px; }
+
+    .quantite { display: inline-flex; align-items: center; gap: 4px; }
+    .quantite button {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1.5px solid var(--bordure); background: var(--blanc);
+      font-size: 1.15rem; font-weight: 700; cursor: pointer; color: var(--bleu-700);
+    }
+    .quantite button:active { background: var(--bleu-100); }
+    .quantite output { min-width: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    /* =========================================================
+       7. SERVICES (cases à cocher stylisées)
+       ========================================================= */
+    .services { display: grid; gap: 8px; }
+    .service {
+      display: flex; align-items: flex-start; gap: 12px;
+      border: 1.5px solid var(--bordure); border-radius: 12px; padding: 12px 14px;
+      cursor: pointer; background: var(--blanc);
+    }
+    .service:has(input:checked) { border-color: var(--bleu-600); background: var(--bleu-50); }
+    .service input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--bleu-700); flex-shrink: 0; }
+    .service strong { display: block; }
+    .service small { color: var(--texte-2); }
+
+    /* =========================================================
+       8. BARRE DE VALIDATION (bouton proéminent, toujours visible)
+       ========================================================= */
+    .barre-validation {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+      background: rgba(255,255,255,.94);
+      -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+      border-top: 1px solid var(--bordure);
+      padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+    }
+    .barre-validation .conteneur { display: flex; align-items: center; gap: 14px; }
+    .recap { font-size: .9rem; color: var(--texte-2); flex: 1; line-height: 1.3; }
+    .recap strong { color: var(--texte); display: block; font-size: 1rem; }
+
+    .btn {
+      border: 0; cursor: pointer; border-radius: 12px; font-weight: 700;
+      padding: 14px 22px; transition: transform .08s, background .15s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-principal { background: var(--bleu-700); color: var(--blanc); font-size: 1.05rem; padding: 16px 26px; box-shadow: 0 6px 16px rgba(29,78,216,.35); }
+    .btn-principal:hover { background: var(--bleu-900); }
+    .btn-secondaire { background: var(--blanc); color: var(--bleu-700); border: 1.5px solid var(--bleu-600); }
+    .btn-danger { background: var(--blanc); color: var(--erreur); border: 1.5px solid #e5b4ae; }
+
+    /* =========================================================
+       9. LISTE DES COMMANDES
+       ========================================================= */
+    .actions-liste { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .commande { border: 1px solid var(--bordure); border-radius: var(--rayon); background: var(--blanc); padding: 16px; margin-bottom: 12px; box-shadow: var(--ombre); }
+    .commande header { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+    .commande h3 { font-size: 1.02rem; }
+    .num { font-size: .82rem; color: var(--texte-2); font-variant-numeric: tabular-nums; }
+    .commande dl { margin: 10px 0 0; display: grid; grid-template-columns: 96px 1fr; gap: 4px 10px; font-size: .92rem; }
+    .commande dt { color: var(--texte-2); }
+    .commande dd { margin: 0; }
+    .supprimer { margin-top: 12px; padding: 8px 14px; font-size: .88rem; }
+    .vide { text-align: center; color: var(--texte-2); padding: 40px 16px; }
+
+    /* =========================================================
+       10. NOTIFICATION (toast) ET DIALOGUE DE CONFIRMATION
+       ========================================================= */
+    .toast {
+      position: fixed; left: 50%; bottom: 100px; transform: translate(-50%, 20px);
+      background: var(--bleu-900); color: var(--blanc);
+      padding: 12px 20px; border-radius: 12px; font-weight: 600;
+      opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 40;
+      max-width: calc(100% - 32px); text-align: center;
+    }
+    .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+
+    dialog { border: 0; border-radius: 16px; padding: 24px; max-width: 380px; width: calc(100% - 32px); box-shadow: 0 20px 60px rgba(11,42,107,.3); }
+    dialog::backdrop { background: rgba(11,42,107,.45); }
+    dialog h2 { font-size: 1.15rem; margin-bottom: 8px; }
+    dialog p { color: var(--texte-2); margin: 0 0 18px; }
+    dialog .rangee { display: flex; gap: 10px; justify-content: flex-end; }
+
+    [hidden] { display: none !important; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+
+<body>
+  <!-- =========================================================
+       EN-TÊTE
+       ========================================================= -->
+  <header class="entete">
+    <div class="conteneur">
+      <!-- À personnaliser : nom de votre pressing -->
+      <h1>Pressing Azur</h1>
+      <p>Nous collectons votre linge chez vous et vous le rapportons propre, repassé, prêt à porter.</p>
+    </div>
+  </header>
+
+  <main class="conteneur">
+    <!-- Onglets : nouvelle commande / historique -->
+    <div class="onglets" role="tablist" aria-label="Navigation">
+      <button class="onglet" role="tab" id="onglet-formulaire" aria-selected="true" aria-controls="vue-formulaire">Nouvelle commande</button>
+      <button class="onglet" role="tab" id="onglet-liste" aria-selected="false" aria-controls="vue-liste">Commandes<span class="pastille" id="compteur">0</span></button>
+    </div>
+
+    <!-- =======================================================
+         VUE 1 : FORMULAIRE DE COMMANDE
+         ======================================================= -->
+    <section id="vue-formulaire" role="tabpanel" aria-labelledby="onglet-formulaire">
+      <form id="formulaire" novalidate>
+
+        <!-- Coordonnées -->
+        <div class="bloc">
+          <h2>Vos coordonnées</h2>
+          <p class="aide">Pour vous joindre et retrouver votre adresse de collecte.</p>
+          <div class="grille">
+            <div class="grille deux">
+              <label class="champ" id="champ-nom">Nom complet
+                <input type="text" id="nom" name="nom" autocomplete="name" placeholder="Ex. Awa Dossou">
+                <span class="message-erreur">Indiquez votre nom (2 caractères minimum).</span>
+              </label>
+              <label class="champ" id="champ-tel">Téléphone
+                <input type="tel" id="tel" name="tel" autocomplete="tel" inputmode="tel" placeholder="Ex. 01 23 45 67 89">
+                <span class="message-erreur">Indiquez un numéro valide (8 à 15 chiffres).</span>
+              </label>
+            </div>
+            <label class="champ" id="champ-adresse">Adresse de collecte
+              <textarea id="adresse" name="adresse" rows="2" autocomplete="street-address" placeholder="Rue, quartier, repère (bâtiment, étage)"></textarea>
+              <span class="message-erreur">Indiquez l'adresse où venir chercher le linge.</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Vêtements -->
+        <div class="bloc" id="bloc-vetements">
+          <h2>Vos vêtements</h2>
+          <p class="aide">Touchez + pour ajouter chaque pièce que nous devons collecter.</p>
+          <div class="vetements" id="vetements"><!-- généré par JavaScript --></div>
+          <span class="message-erreur" id="erreur-vetements" style="display:none;margin-top:10px">Ajoutez au moins un vêtement.</span>
+        </div>
+
+        <!-- Services -->
+        <div class="bloc">
+          <h2>Services souhaités</h2>
+          <p class="aide">Cochez ce qui s'applique à cette commande.</p>
+          <div class="services" id="services"><!-- généré par JavaScript --></div>
+        </div>
+
+        <!-- Date de collecte -->
+        <div class="bloc">
+          <h2>Collecte</h2>
+          <div class="grille deux">
+            <label class="champ" id="champ-date">Date de collecte
+              <input type="date" id="date" name="date">
+              <span class="message-erreur">Choisissez une date à partir d'aujourd'hui.</span>
+            </label>
+            <label class="champ">Créneau
+              <select id="creneau" name="creneau">
+                <option>Matin (8h – 12h)</option>
+                <option>Après-midi (12h – 17h)</option>
+                <option>Soir (17h – 20h)</option>
+              </select>
+            </label>
+          </div>
+          <label class="champ" style="margin-top:14px">Instructions (facultatif)
+            <textarea id="notes" name="notes" rows="2" placeholder="Taches à signaler, code d'accès, etc."></textarea>
+          </label>
+        </div>
+
+        <!-- Barre fixe : récapitulatif + bouton proéminent -->
+        <div class="barre-validation">
+          <div class="conteneur">
+            <div class="recap" aria-live="polite">
+              <strong id="recap-total">0 pièce</strong>
+              <span id="recap-services">Aucun service</span>
+            </div>
+            <button type="submit" class="btn btn-principal" id="btn-valider">Valider la Commande</button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <!-- =======================================================
+         VUE 2 : COMMANDES ENREGISTRÉES
+         ======================================================= -->
+    <section id="vue-liste" role="tabpanel" aria-labelledby="onglet-liste" hidden>
+      <div class="actions-liste">
+        <button class="btn btn-principal" id="btn-export" style="padding:12px 20px;font-size:1rem">Exporter vers Excel</button>
+        <button class="btn btn-danger" id="btn-vider">Tout supprimer</button>
+      </div>
+      <div id="liste"></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Dialogue de confirmation (suppression) -->
+  <dialog id="dialogue">
+    <h2 id="dialogue-titre">Confirmer</h2>
+    <p id="dialogue-texte"></p>
+    <div class="rangee">
+      <button class="btn btn-secondaire" id="dialogue-non" type="button">Annuler</button>
+      <button class="btn btn-danger" id="dialogue-oui" type="button">Supprimer</button>
+    </div>
+  </dialog>
+
+  <!-- Bibliothèque Excel (SheetJS). Si elle n'est pas chargée (hors ligne),
+       l'export bascule automatiquement sur un fichier CSV lisible par Excel. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <script>
+    /* =========================================================
+       CONFIGURATION (à adapter facilement)
+       ========================================================= */
+    const CLE_STOCKAGE = "pressing_commandes_v1";
+
+    // Icônes SVG (tracés simples, style contour)
+    const ICONES = {
+      chemise:  '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>',
+      pantalon: '<path d="M7 2h10l1.5 20h-5.5L12 9l-1 13H5.5z"/>',
+      robe:     '<path d="M9 2h6l1 6 4.5 14h-17L8 8z"/><path d="M8 8h8"/>',
+      costume:  '<path d="M8 2l4 5 4-5 4 3v17H4V5z"/><path d="M12 7v15"/>',
+      manteau:  '<path d="M8 2h8l4 4v16h-6V12h-4v10H4V6z"/><path d="M12 2v6"/>',
+      cravate:  '<path d="M10 2h4l-1 4 2 14-3 2-3-2 2-14z"/>',
+      couette:  '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M9 10v9M15 10v9"/>',
+      linge:    '<path d="M4 6h16v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M4 6l2-3h12l2 3M9 11h6"/>'
+    };
+
+    const VETEMENTS = [
+      { id: "chemise",  nom: "Chemise / haut" },
+      { id: "pantalon", nom: "Pantalon / jupe" },
+      { id: "robe",     nom: "Robe" },
+      { id: "costume",  nom: "Veste / costume" },
+      { id: "manteau",  nom: "Manteau" },
+      { id: "cravate",  nom: "Cravate / foulard" },
+      { id: "couette",  nom: "Couette / couverture" },
+      { id: "linge",    nom: "Linge de maison" }
+    ];
+
+    const SERVICES = [
+      { id: "nettoyage", nom: "Nettoyage à sec",      desc: "Pour les tissus délicats" },
+      { id: "lavage",    nom: "Lavage à l'eau",       desc: "Linge courant" },
+      { id: "repassage", nom: "Repassage",            desc: "Pièces pliées ou sur cintre" },
+      { id: "detachage", nom: "Détachage",            desc: "Traitement ciblé des taches" },
+      { id: "retouches", nom: "Retouches",            desc: "Ourlets, fermetures, boutons" },
+      { id: "express",   nom: "Express 24 h",         desc: "Retour sous 24 heures" }
+    ];
+
+    /* =========================================================
+       ÉTAT DE L'APPLICATION
+       ========================================================= */
+    // Quantités par vêtement pour la commande en cours
+    const quantites = Object.fromEntries(VETEMENTS.map(v => [v.id, 0]));
+
+    // Repli en mémoire si LocalStorage est indisponible (navigation privée, etc.)
+    let memoireSecours = [];
+
+    /* =========================================================
+       UTILITAIRES
+       ========================================================= */
+    const $ = (sel) => document.querySelector(sel);
+
+    // Échappe le HTML pour éviter toute injection via les champs saisis
+    function echapper(texte) {
+      return String(texte).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function aujourdhuiISO() {
+      const d = new Date();
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); // date locale, pas UTC
+      return d.toISOString().slice(0, 10);
+    }
+
+    function formaterDate(iso) {
+      const [a, m, j] = iso.split("-");
+      return `${j}/${m}/${a}`;
+    }
+
+    function pluriel(n, mot) { return `${n} ${mot}${n > 1 ? "s" : ""}`; }
+
+    let minuteurToast;
+    function toast(message) {
+      const el = $("#toast");
+      el.textContent = message;
+      el.classList.add("visible");
+      clearTimeout(minuteurToast);
+      minuteurToast = setTimeout(() => el.classList.remove("visible"), 3200);
+    }
+
+    /* =========================================================
+       STOCKAGE LOCAL
+       ========================================================= */
+    function lireCommandes() {
+      try {
+        return JSON.parse(localStorage.getItem(CLE_STOCKAGE)) || [];
+      } catch (e) {
+        return memoireSecours;
+      }
+    }
+
+    function ecrireCommandes(liste) {
+      try {
+        localStorage.setItem(CLE_STOCKAGE, JSON.stringify(liste));
+      } catch (e) {
+        memoireSecours = liste;
+        toast("Stockage local indisponible : les commandes seront perdues à la fermeture.");
+      }
+    }
+
+    /* =========================================================
+       CONSTRUCTION DE L'INTERFACE
+       ========================================================= */
+    function construireVetements() {
+      $("#vetements").innerHTML = VETEMENTS.map(v => `
+        <div class="vetement" id="tuile-${v.id}">
+          <svg viewBox="0 0 24 24" aria-hidden="true">${ICONES[v.id]}</svg>
+          <span class="nom">${v.nom}</span>
+          <div class="quantite" role="group" aria-label="Quantité : ${v.nom}">
+            <button type="button" data-action="moins" data-id="${v.id}" aria-label="Retirer ${v.nom}">−</button>
+            <output id="qte-${v.id}" aria-live="polite">0</output>
+            <button type="button" data-action="plus" data-id="${v.id}" aria-label="Ajouter ${v.nom}">+</button>
+          </div>
+        </div>`).join("");
+    }
+
+    function construireServices() {
+      $("#services").innerHTML = SERVICES.map(s => `
+        <label class="service">
+          <input type="checkbox" name="service" value="${s.nom}">
+          <span><strong>${s.nom}</strong><small>${s.desc}</small></span>
+        </label>`).join("");
+    }
+
+    function changerQuantite(id, delta) {
+      quantites[id] = Math.max(0, Math.min(99, quantites[id] + delta));
+      $("#qte-" + id).textContent = quantites[id];
+      $("#tuile-" + id).classList.toggle("actif", quantites[id] > 0);
+      $("#erreur-vetements").style.display = "none";
+      majRecap();
+    }
+
+    function servicesCoches() {
+      return [...document.querySelectorAll('input[name="service"]:checked')].map(i => i.value);
+    }
+
+    function totalPieces() {
+      return Object.values(quantites).reduce((a, b) => a + b, 0);
+    }
+
+    function majRecap() {
+      const n = totalPieces();
+      const s = servicesCoches().length;
+      $("#recap-total").textContent = pluriel(n, "pièce");
+      $("#recap-services").textContent = s ? pluriel(s, "service") + " sélectionné" + (s > 1 ? "s" : "") : "Aucun service";
+    }
+
+    /* =========================================================
+       VALIDATION DU FORMULAIRE
+       ========================================================= */
+    function marquer(idChamp, valide) {
+      $("#" + idChamp).classList.toggle("invalide", !valide);
+      return valide;
+    }
+
+    function valider() {
+      const nom = $("#nom").value.trim();
+      const chiffresTel = $("#tel").value.replace(/\D/g, "");
+      const adresse = $("#adresse").value.trim();
+      const date = $("#date").value;
+
+      const resultats = [
+        marquer("champ-nom", nom.length >= 2),
+        marquer("champ-tel", chiffresTel.length >= 8 && chiffresTel.length <= 15),
+        marquer("champ-adresse", adresse.length >= 5),
+        marquer("champ-date", !!date && date >= aujourdhuiISO())
+      ];
+
+      const vetementsOk = totalPieces() > 0;
+      $("#erreur-vetements").style.display = vetementsOk ? "none" : "block";
+      resultats.push(vetementsOk);
+
+      if (!resultats.every(Boolean)) {
+        // Fait défiler jusqu'à la première erreur
+        const premiere = document.querySelector(".invalide, #erreur-vetements[style*='block']");
+        if (premiere) premiere.scrollIntoView({ behavior: "smooth", block: "center" });
+        return false;
+      }
+      return true;
+    }
+
+    /* =========================================================
+       ENREGISTREMENT D'UNE COMMANDE
+       ========================================================= */
+    function creerNumero() {
+      const d = aujourdhuiISO().replace(/-/g, "");
+      return `CMD-${d}-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
+    function enregistrerCommande() {
+      const vetements = VETEMENTS
+        .filter(v => quantites[v.id] > 0)
+        .map(v => ({ nom: v.nom, quantite: quantites[v.id] }));
+
+      const commande = {
+        numero: creerNumero(),
+        creeLe: new Date().toISOString(),
+        nom: $("#nom").value.trim(),
+        telephone: $("#tel").value.trim(),
+        adresse: $("#adresse").value.trim(),
+        vetements,
+        totalPieces: totalPieces(),
+        services: servicesCoches(),
+        dateCollecte: $("#date").value,
+        creneau: $("#creneau").value,
+        notes: $("#notes").value.trim()
+      };
+
+      const liste = lireCommandes();
+      liste.unshift(commande);          // la plus récente en premier
+      ecrireCommandes(liste);
+      return commande;
+    }
+
+    function reinitialiserFormulaire() {
+      $("#formulaire").reset();
+      VETEMENTS.forEach(v => { quantites[v.id] = 0; $("#qte-" + v.id).textContent = "0"; $("#tuile-" + v.id).classList.remove("actif"); });
+      document.querySelectorAll(".invalide").forEach(e => e.classList.remove("invalide"));
+      $("#date").value = aujourdhuiISO();
+      majRecap();
+    }
+
+    /* =========================================================
+       AFFICHAGE DE LA LISTE DES COMMANDES
+       ========================================================= */
+    function afficherListe() {
+      const liste = lireCommandes();
+      $("#compteur").textContent = liste.length;
+
+      if (!liste.length) {
+        $("#liste").innerHTML = '<p class="vide">Aucune commande enregistrée pour le moment.<br>Les commandes validées apparaîtront ici.</p>';
+        return;
+      }
+
+      $("#liste").innerHTML = liste.map(c => `
+        <article class="commande">
+          <header>
+            <h3>${echapper(c.nom)}</h3>
+            <span class="num">${echapper(c.numero)}</span>
+          </header>
+          <dl>
+            <dt>Téléphone</dt><dd>${echapper(c.telephone)}</dd>
+            <dt>Adresse</dt><dd>${echapper(c.adresse)}</dd>
+            <dt>Collecte</dt><dd>${formaterDate(c.dateCollecte)}, ${echapper(c.creneau)}</dd>
+            <dt>Vêtements</dt><dd>${c.vetements.map(v => `${v.quantite} × ${echapper(v.nom)}`).join(", ")} (${pluriel(c.totalPieces, "pièce")})</dd>
+            <dt>Services</dt><dd>${c.services.length ? c.services.map(echapper).join(", ") : "Aucun"}</dd>
+            ${c.notes ? `<dt>Instructions</dt><dd>${echapper(c.notes)}</dd>` : ""}
+          </dl>
+          <button class="btn btn-danger supprimer" data-numero="${echapper(c.numero)}">Supprimer</button>
+        </article>`).join("");
+    }
+
+    /* =========================================================
+       EXPORT EXCEL
+       ========================================================= */
+    function lignesExport() {
+      return lireCommandes().map(c => ({
+        "N° commande": c.numero,
+        "Enregistrée le": new Date(c.creeLe).toLocaleString("fr-FR"),
+        "Nom": c.nom,
+        "Téléphone": c.telephone,
+        "Adresse": c.adresse,
+        "Vêtements": c.vetements.map(v => `${v.quantite} × ${v.nom}`).join(" ; "),
+        "Total pièces": c.totalPieces,
+        "Services": c.services.join(" ; "),
+        "Date de collecte": formaterDate(c.dateCollecte),
+        "Créneau": c.creneau,
+        "Instructions": c.notes
+      }));
+    }
+
+    function telecharger(blob, nomFichier) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = nomFichier;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function exporterExcel() {
+      const lignes = lignesExport();
+      if (!lignes.length) { toast("Aucune commande à exporter."); return; }
+
+      const nomBase = `commandes-pressing-${aujourdhuiISO()}`;
+
+      // Cas 1 : SheetJS disponible → vrai fichier .xlsx
+      if (window.XLSX) {
+        const feuille = XLSX.utils.json_to_sheet(lignes);
+        feuille["!cols"] = [18, 20, 22, 16, 36, 40, 12, 32, 16, 20, 30].map(w => ({ wch: w }));
+        const classeur = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(classeur, feuille, "Commandes");
+        XLSX.writeFile(classeur, nomBase + ".xlsx");
+        toast("Fichier Excel téléchargé.");
+        return;
+      }
+
+      // Cas 2 : repli hors ligne → CSV (séparateur « ; » et BOM UTF-8 pour Excel FR)
+      const entetes = Object.keys(lignes[0]);
+      const cellule = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      const csv = [entetes.map(cellule).join(";")]
+        .concat(lignes.map(l => entetes.map(h => cellule(l[h])).join(";")))
+        .join("\r\n");
+      telecharger(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }), nomBase + ".csv");
+      toast("Hors ligne : export CSV (ouvrable dans Excel).");
+    }
+
+    /* =========================================================
+       DIALOGUE DE CONFIRMATION
+       ========================================================= */
+    function confirmer(titre, texte, libelleOui) {
+      return new Promise(resolve => {
+        const d = $("#dialogue");
+        $("#dialogue-titre").textContent = titre;
+        $("#dialogue-texte").textContent = texte;
+        $("#dialogue-oui").textContent = libelleOui;
+        const fin = (valeur) => { d.close(); resolve(valeur); };
+        $("#dialogue-oui").onclick = () => fin(true);
+        $("#dialogue-non").onclick = () => fin(false);
+        d.oncancel = () => resolve(false);
+        d.showModal();
+      });
+    }
+
+    /* =========================================================
+       NAVIGATION ENTRE LES ONGLETS
+       ========================================================= */
+    function afficherVue(nom) {
+      const estListe = nom === "liste";
+      $("#vue-formulaire").hidden = estListe;
+      $("#vue-liste").hidden = !estListe;
+      $("#onglet-formulaire").setAttribute("aria-selected", String(!estListe));
+      $("#onglet-liste").setAttribute("aria-selected", String(estListe));
+      if (estListe) afficherListe();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    /* =========================================================
+       INITIALISATION ET ÉVÉNEMENTS
+       ========================================================= */
+    function init() {
+      construireVetements();
+      construireServices();
+
+      // Date de collecte : par défaut aujourd'hui, jamais dans le passé
+      $("#date").min = aujourdhuiISO();
+      $("#date").value = aujourdhuiISO();
+
+      // Boutons + / − des vêtements (délégation d'événements)
+      $("#vetements").addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-action]");
+        if (!b) return;
+        changerQuantite(b.dataset.id, b.dataset.action === "plus" ? 1 : -1);
+      });
+
+      $("#services").addEventListener("change", majRecap);
+
+      // Retire le message d'erreur dès que l'utilisateur corrige un champ
+      document.querySelectorAll(".champ input, .champ textarea").forEach(el =>
+        el.addEventListener("input", () => el.closest(".champ").classList.remove("invalide")));
+
+      // Validation de la commande
+      $("#formulaire").addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (!valider()) return;
+        const c = enregistrerCommande();
+        reinitialiserFormulaire();
+        afficherListe();
+        toast(`Commande ${c.numero} enregistrée. Nous vous appelons avant la collecte.`);
+      });
+
+      // Onglets
+      $("#onglet-formulaire").addEventListener("click", () => afficherVue("formulaire"));
+      $("#onglet-liste").addEventListener("click", () => afficherVue("liste"));
+
+      // Export
+      $("#btn-export").addEventListener("click", exporterExcel);
+
+      // Suppression d'une commande
+      $("#liste").addEventListener("click", async (e) => {
+        const b = e.target.closest("button[data-numero]");
+        if (!b) return;
+        if (await confirmer("Supprimer cette commande ?", `La commande ${b.dataset.numero} sera définitivement supprimée.`, "Supprimer")) {
+          ecrireCommandes(lireCommandes().filter(c => c.numero !== b.dataset.numero));
+          afficherListe();
+          toast("Commande supprimée.");
+        }
+      });
+
+      // Suppression de toutes les commandes
+      $("#btn-vider").addEventListener("click", async () => {
+        if (!lireCommandes().length) { toast("Aucune commande à supprimer."); return; }
+        if (await confirmer("Tout supprimer ?", "Toutes les commandes enregistrées sur cet appareil seront effacées. Pensez à exporter avant.", "Tout supprimer")) {
+          ecrireCommandes([]);
+          afficherListe();
+          toast("Toutes les commandes ont été supprimées.");
+        }
+      });
+
+      majRecap();
+      afficherListe();
+    }
+
+    init();
+  </script>
+</body>
+</html>
